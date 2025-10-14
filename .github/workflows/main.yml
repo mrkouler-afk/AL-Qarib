@@ -25,11 +25,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -45,11 +40,10 @@ jobs:
         run: yes | flutter doctor --android-licenses
 
       - name: Install Flet CLI
-        run: |
-          pip install --upgrade flet-cli
-          flet --version
+        run: pip install flet flet-cli
 
       - name: Build APK
+        working-directory: ./AL-Qarib   # ← غيّرها حسب اسم مجلد المشروع
         run: |
           flutter config --no-analytics
           flutter doctor
@@ -61,7 +55,7 @@ jobs:
         uses: actions/upload-artifact@v4.3.4
         with:
           name: apk-build-artifact
-          path: build/apk
+          path: AL-Qarib/build/apk
           if-no-files-found: warn
 
   build-aab:
@@ -75,11 +69,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -95,11 +84,10 @@ jobs:
         run: yes | flutter doctor --android-licenses
 
       - name: Install Flet CLI
-        run: |
-          pip install --upgrade flet-cli
-          flet --version
+        run: pip install flet flet-cli
 
       - name: Build AAB
+        working-directory: ./AL-Qarib   # ← غيّرها حسب اسم مجلد المشروع
         run: |
           flutter config --no-analytics
           flutter doctor
@@ -111,5 +99,5 @@ jobs:
         uses: actions/upload-artifact@v4.3.4
         with:
           name: aab-build-artifact
-          path: build/aab
+          path: AL-Qarib/build/aab
           if-no-files-found: warn
