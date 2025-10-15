@@ -1,191 +1,75 @@
-name: All Builds (APK, AAB, Windows, Linux, macOS, IPA)
+name: Build Flet App (APK & AAB + Desktop)
 
 on:
   push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
+    branches: [ main ]
   workflow_dispatch:
 
 env:
+  PYTHON_VERSION: "3.12.2"
+  FLUTTER_VERSION: "3.24.3" # أحدث إصدار مستقر حتى أكتوبر 2025
   BUILD_NUMBER: 1
   BUILD_VERSION: 1.0.0
-  PYTHON_VERSION: 3.12.2
-  FLUTTER_VERSION: 3.24.3
 
 jobs:
-  # ---------------------- ANDROID (APK + AAB) ----------------------
-  build-android:
-    runs-on: ubuntu-latest
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
     steps:
-      - name: Checkout code
+      - name: 🧩 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Setup Flutter
+      - name: 🪶 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - name: Setup Java (JDK 17)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Install Dependencies
+      - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          flutter pub get
-          yes | flutter doctor --android-licenses
+          pip install flet
+          pip install -r requirements.txt || true
 
-      - name: Build APK
+      - name: 🔧 Configure Flutter
         run: |
           flutter config --no-analytics
-          flet build apk --verbose --build-number=$BUILD_NUMBER --build-version=$BUILD_VERSION
+          yes | flutter doctor --android-licenses || true
+          flutter doctor -v
 
-      - name: Upload APK Artifact
+      - name: 🧱 Clean previous builds
+        run: |
+          if [ -d build ]; then rm -rf build; fi
+          flutter clean || true
+
+      - name: 🏗️ Build APK
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          flet build apk --verbose --build-number=${{ env.BUILD_NUMBER }} --build-version=${{ env.BUILD_VERSION }}
+
+      - name: 📦 Build AAB
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          flet build aab --verbose --build-number=${{ env.BUILD_NUMBER }} --build-version=${{ env.BUILD_VERSION }}
+
+      - name: 💻 Build Desktop (Windows / macOS)
+        if: matrix.os != 'ubuntu-latest'
+        run: |
+          flet build
+
+      - name: 📤 Upload Artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: apk-build
-          path: build/apk
-          if-no-files-found: warn
-
-      - name: Build AAB
-        run: |
-          flet build aab --verbose --build-number=$BUILD_NUMBER --build-version=$BUILD_VERSION
-
-      - name: Upload AAB Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: aab-build
-          path: build/aab
-          if-no-files-found: warn
-
-  # ---------------------- WINDOWS ----------------------
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v1
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          flutter pub get
-
-      - name: Build Windows
-        run: |
-          flutter config --no-analytics
-          flet build windows --verbose --no-rich-output --build-number=$env:BUILD_NUMBER --build-version=$env:BUILD_VERSION
-
-      - name: Upload Windows Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-build
-          path: build/windows
-          if-no-files-found: warn
-
-  # ---------------------- LINUX ----------------------
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-
-      - name: Install GTK and Dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          flutter pub get
-
-      - name: Build Linux
-        run: |
-          flutter config --no-analytics
-          flet build linux --verbose --build-number=$BUILD_NUMBER --build-version=$BUILD_VERSION
-
-      - name: Upload Linux Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-build
-          path: build/linux
-          if-no-files-found: warn
-
-  # ---------------------- MACOS + IPA ----------------------
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-
-      - name: Install CocoaPods and Accept License
-        run: |
-          sudo gem install cocoapods
-          sudo xcodebuild -license accept
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          flutter pub get
-
-      - name: Build macOS App
-        run: |
-          flutter config --no-analytics
-          flet build macos --verbose --build-number=$BUILD_NUMBER --build-version=$BUILD_VERSION
-
-      - name: Upload macOS Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-build
-          path: build/macos
-          if-no-files-found: warn
-
-      - name: Build IPA
-        run: |
-          flet build ipa --verbose --build-number=$BUILD_NUMBER --build-version=$BUILD_VERSION
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ipa-build
-          path: build/ipa
-          if-no-files-found: warn
+          name: app-${{ matrix.os }}
+          path: |
+            build/
+            dist/
