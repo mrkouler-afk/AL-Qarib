@@ -2,13 +2,12 @@ name: Build Flet App (APK & AAB)
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
 
 jobs:
-  build-android:
-    name: Build Android APK & AAB
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,26 +19,39 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Flet
+      - name: Install Flet and dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip xz-utils libgtk-3-dev
           python -m pip install --upgrade pip
           pip install flet
 
-      - name: Build Android (APK + AAB)
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+
+      - name: Accept Android licenses
+        run: yes | flutter doctor --android-licenses
+
+      - name: Flutter doctor check
+        run: flutter doctor -v
+
+      - name: Build Android APK and AAB using Flet
         run: |
           flet build apk
           flet build aab
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: flet-app-apk
+          name: Flet-APK
           path: build/android/app/release/*.apk
           if-no-files-found: warn
 
-      - name: Upload AAB artifact
+      - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: flet-app-aab
+          name: Flet-AAB
           path: build/android/app/release/*.aab
           if-no-files-found: warn
