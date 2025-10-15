@@ -20,7 +20,6 @@ env:
   BUILD_NUMBER: 1
   BUILD_VERSION: 1.0.0
   PYTHON_VERSION: 3.12.2
-  FLUTTER_VERSION: 3.27.5  # أحدث stable في أكتوبر 2025
 
 jobs:
   build-linux:
@@ -40,11 +39,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
+    - name: Setup Flutter (latest stable)
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: ${{ env.FLUTTER_VERSION }}
-        channel: stable
+        channel: stable  # Auto-downloads latest stable (e.g., 3.24.3 as of Oct 2025)
 
     - name: Patch for linux build
       run: |
@@ -84,11 +82,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
+    - name: Setup Flutter (latest stable)
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: ${{ env.FLUTTER_VERSION }}
-        channel: stable
+        channel: stable  # Auto-downloads latest stable
 
     - name: Accept Xcode license
       run: sudo xcodebuild -license accept
@@ -123,11 +120,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
+    - name: Setup Flutter (latest stable)
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: ${{ env.FLUTTER_VERSION }}
-        channel: stable
+        channel: stable  # Auto-downloads latest stable
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
@@ -162,11 +158,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
+    - name: Setup Flutter (latest stable)
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: ${{ env.FLUTTER_VERSION }}
-        channel: stable
+        channel: stable  # Auto-downloads latest stable
 
     - name: Accept Android licenses
       run: |
@@ -204,11 +199,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
+    - name: Setup Flutter (latest stable)
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: ${{ env.FLUTTER_VERSION }}
-        channel: stable
+        channel: stable  # Auto-downloads latest stable
 
     - name: Setup Java JDK
       uses: actions/setup-java@v4.2.1
@@ -252,11 +246,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
+    - name: Setup Flutter (latest stable)
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: ${{ env.FLUTTER_VERSION }}
-        channel: stable
+        channel: stable  # Auto-downloads latest stable
 
     - name: Accept Xcode license
       run: sudo xcodebuild -license accept
