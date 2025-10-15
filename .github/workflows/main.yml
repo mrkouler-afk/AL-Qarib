@@ -1,13 +1,18 @@
-name: Build Flet Android (Safe Mode)
+name: Build Flet Android (APK & AAB - Safe Mode)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
+  workflow_dispatch:  # للتنفيذ اليدوي
+
+env:
+  BUILD_NUMBER: ${{ github.run_number }}
+  BUILD_VERSION: "1.0.0"
 
 jobs:
-  build:
+  build-android:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -15,68 +20,97 @@ jobs:
       - name: 🧩 Checkout repository
         uses: actions/checkout@v4
 
-      # تثبيت بايثون
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # تثبيت Flutter بأحدث إصدار
       - name: 🪶 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.29.2"
           channel: "stable"
+          cache: true
 
-      # تثبيت أدوات أندرويد الإضافية
       - name: 🧰 Install Android tools
         run: |
-          sudo apt-get update || true
-          sudo apt-get install -y libgtk-3-dev ninja-build cmake unzip || true
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev ninja-build cmake unzip pkg-config
 
-      # تثبيت المتطلبات بدون توقف
-      - name: ⚙️ Install dependencies safely
-        continue-on-error: true
+      - name: ⚙️ Install Python dependencies
         run: |
-          flutter clean || true
-          flutter pub get || true
-          pip install --upgrade pip || true
-          pip install flet || true
+          python -m pip install --upgrade pip
+          pip install flet[all]
+          if [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt
+          fi
 
-      # قبول جميع تراخيص Android تلقائيًا
       - name: ✅ Accept Android licenses
         continue-on-error: true
-        run: yes | flutter doctor --android-licenses || true
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          echo "y" | flutter doctor --android-licenses > /dev/null 2>&1 || true
 
-      # فحص بيئة Flutter (للتأكد من وجود كل شيء)
-      - name: 🔍 Flutter Doctor Check
-        continue-on-error: true
-        run: flutter doctor -v || true
+      - name: 🔍 Flutter Environment Check
+        run: |
+          flutter --version
+          flutter doctor -v
 
-      # بناء APK (حتى لو فيه تحذيرات)
+      - name: 🧹 Clean previous builds
+        run: |
+          flutter clean > /dev/null 2>&1 || true
+          rm -rf build/ > /dev/null 2>&1 || true
+
       - name: 📱 Build APK
-        continue-on-error: true
         run: |
-          echo "🔨 Building APK..."
-          flet build apk --verbose || true
-          echo "✅ APK build step completed (even if warnings exist)"
+          echo "🔨 Building APK (Build: $BUILD_NUMBER, Version: $BUILD_VERSION)..."
+          flet build apk --build-number=$BUILD_NUMBER --build-version=$BUILD_VERSION --verbose
+          echo "✅ APK build completed successfully!"
 
-      # بناء AAB (Google Play bundle)
       - name: 📦 Build AAB
-        continue-on-error: true
         run: |
-          echo "🔨 Building AAB..."
-          flet build aab --verbose || true
-          echo "✅ AAB build step completed (even if warnings exist)"
+          echo "🔨 Building AAB (Build: $BUILD_NUMBER, Version: $BUILD_VERSION)..."
+          flet build aab --build-number=$BUILD_NUMBER --build-version=$BUILD_VERSION --verbose
+          echo "✅ AAB build completed successfully!"
 
-      # جمع جميع الملفات الناتجة (APK + AAB)
-      - name: 💾 Upload Build Artifacts
-        if: always()
+      - name: 🔎 Verify Build Outputs
+        run: |
+          echo "📁 Build outputs:"
+          find build/ -type f -name "*.apk" -o -name "*.aab" | while read file; do
+            echo "📄 Found: $file ($(du -h "$file" | cut -f1))"
+          done
+          
+          APK_COUNT=$(find build/ -name "*.apk" | wc -l)
+          AAB_COUNT=$(find build/ -name "*.aab" | wc -l)
+          
+          echo "📊 APK files: $APK_COUNT"
+          echo "📊 AAB files: $AAB_COUNT"
+          
+          if [ $APK_COUNT -eq 0 ] && [ $AAB_COUNT -eq 0 ]; then
+            echo "❌ No build files found!"
+            exit 1
+          fi
+
+      - name: 💾 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-builds
-          path: |
-            build/**/*.apk
-            build/**/*.aab
-            **/build/app/outputs/**/*.apk
-            **/build/app/outputs/**/*.aab
+          name: android-apk-${{ github.run_number }}
+          path: build/**/*.apk
+          retention-days: 30
+
+      - name: 💾 Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aab-${{ github.run_number }}
+          path: build/**/*.aab
+          retention-days: 30
+
+      - name: 📋 Build Summary
+        if: always()
+        run: |
+          echo "🎉 Build Summary for Run #${{ github.run_number }}"
+          echo "📱 APK Files:"
+          find build/ -name "*.apk" 2>/dev/null || echo "   No APK files found"
+          echo "📦 AAB Files:"
+          find build/ -name "*.aab" 2>/dev/null || echo "   No AAB files found"
+          echo "🕒 Finished at: $(date)"
