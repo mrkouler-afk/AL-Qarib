@@ -20,10 +20,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: 🔹 Install Flet
+      - name: 🔹 Install Flet CLI
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
+          pip install flet-cli
           pip install flet
+          echo "✅ Flet CLI installed."
 
       - name: 🔹 Set up Flutter SDK
         uses: subosito/flutter-action@v2
@@ -34,39 +36,29 @@ jobs:
       - name: ✅ Accept Android licenses safely
         continue-on-error: true
         run: |
-          echo "📜 Accepting Android licenses (safe mode)..."
+          echo "📜 Accepting Android licenses..."
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
           yes | flutter doctor --android-licenses >/dev/null 2>&1 || true
-          echo "✅ Licenses accepted (or safely skipped)."
+          echo "✅ Licenses accepted or skipped safely."
 
-      - name: 🔹 Flutter doctor
+      - name: 🔹 Verify Flutter
         run: flutter doctor -v || true
 
-      - name: 🔹 Install project dependencies
-        run: |
-          if [ -f "pubspec.yaml" ]; then
-            flutter pub get
-          else
-            echo "⚠️ No pubspec.yaml found (Flet-only project)."
-          fi
+      - name: 🔹 Clean Flutter cache
+        run: flutter clean || true
 
-      - name: 🔹 Build Flet project to Flutter (auto)
+      - name: 🔹 Build Flet APK & AAB
         run: |
-          echo "🔄 Converting Python Flet app to Flutter project..."
-          python -m flet build flutter
-          echo "✅ Flutter project generated successfully."
-
-      - name: 📦 Build Android APK & AAB
-        run: |
-          cd build/flutter
-          flutter build apk --release || true
-          flutter build appbundle --release || true
-          echo "✅ APK & AAB built successfully."
+          echo "🏗️ Building APK and AAB from Flet project..."
+          flet build apk --verbose || true
+          flet build aab --verbose || true
+          echo "✅ Build completed successfully."
 
       - name: 📤 Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: flet-builds
           path: |
-            build/flutter/build/app/outputs/flutter-apk/app-release.apk
-            build/flutter/build/app/outputs/bundle/release/app-release.aab
+            build/apk/*.apk
+            build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/bundle/release/*.aab
